@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🎉 ContractEasy MVP
 
 **Plateforme de gestion automatisée des contrats pour PME**
@@ -172,3 +173,6 @@ MIT License - voir le fichier [LICENSE](LICENSE) pour plus de détails.
 ---
 
 **Développé avec ❤️ pour simplifier la gestion des contrats pour les PME**
+=======
+# contracteasy-mvp
+>>>>>>> 906e2a7a59d6283a6ec8c5165d8d3e8983826b29
