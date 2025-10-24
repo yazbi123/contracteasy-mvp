@@ -1,0 +1,128 @@
+{
+  "contracts": [
+    {
+      "id": 1,
+      "name": "Maintenance IT",
+      "client": "TechCorp",
+      "status": "expired",
+      "dueDate": "2024-01-15",
+      "amount": 5000,
+      "description": "Contrat de maintenance informatique",
+      "createdAt": "2024-01-01",
+      "signatures": [
+        {
+          "email": "client@techcorp.com",
+          "name": "Jean Dupont",
+          "status": "signed",
+          "signedAt": "2024-01-10"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Prestation marketing",
+      "client": "StartupXYZ",
+      "status": "pending",
+      "dueDate": "2024-02-28",
+      "amount": 3000,
+      "description": "Services de marketing digital",
+      "createdAt": "2024-01-20",
+      "signatures": [
+        {
+          "email": "manager@startupxyz.com",
+          "name": "Marie Martin",
+          "status": "pending",
+          "signedAt": null
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Consulting RH",
+      "client": "HR Solutions",
+      "status": "signed",
+      "dueDate": "2024-06-15",
+      "amount": 8000,
+      "description": "Consulting en ressources humaines",
+      "createdAt": "2024-01-15",
+      "signatures": [
+        {
+          "email": "director@hrsolutions.com",
+          "name": "Pierre Durand",
+          "status": "signed",
+          "signedAt": "2024-01-25"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Formation équipe",
+      "client": "EduCorp",
+      "status": "renewal",
+      "dueDate": "2024-03-10",
+      "amount": 2500,
+      "description": "Formation en management",
+      "createdAt": "2024-01-10",
+      "signatures": [
+        {
+          "email": "ceo@educorp.com",
+          "name": "Sophie Bernard",
+          "status": "signed",
+          "signedAt": "2024-01-20"
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "email": "demo@contracteasy.com",
+      "name": "Utilisateur Demo",
+      "role": "admin",
+      "createdAt": "2024-01-01"
+    }
+  ],
+  "templates": [
+    {
+      "id": 1,
+      "name": "NDA",
+      "description": "Accord de confidentialité",
+      "content": "CONTRAT DE CONFIDENTIALITÉ\n\nEntre les soussignés...",
+      "category": "legal"
+    },
+    {
+      "id": 2,
+      "name": "Prestation",
+      "description": "Contrat de prestation de service",
+      "content": "CONTRAT DE PRESTATION\n\nObjet : Services de...",
+      "category": "service"
+    },
+    {
+      "id": 3,
+      "name": "Partenariat",
+      "description": "Accord de partenariat",
+      "content": "ACCORD DE PARTENARIAT\n\nEntre les parties...",
+      "category": "partnership"
+    }
+  ],
+  "notifications": [
+    {
+      "id": 1,
+      "type": "urgent",
+      "title": "Contrat urgent",
+      "message": "Contrat 'Maintenance IT' expire dans 3 jours",
+      "userId": 1,
+      "createdAt": "2024-01-22T10:00:00Z",
+      "read": false
+    },
+    {
+      "id": 2,
+      "type": "warning",
+      "title": "Signature en attente",
+      "message": "Contrat 'Prestation marketing' en attente de signature",
+      "userId": 1,
+      "createdAt": "2024-01-21T14:30:00Z",
+      "read": false
+    }
+  ]
+}
