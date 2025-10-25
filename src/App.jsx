@@ -9,6 +9,8 @@ import SignatureManagement from './components/SignatureManagement';
 import { MobileDashboard, MobileContractEditor } from './components/MobileComponents';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './hooks/useAuth';
+import { CGU, PrivacyPolicy, SecurityPage, LegalMentions } from './components/LegalPages';
+import CookieBanner from './components/CookieBanner';
 
 // Composant de navigation
 const Navigation = () => {
@@ -155,18 +157,16 @@ const AppContent = () => {
             <SignatureManagement />
           </ProtectedRoute>
         } />
+        
+        {/* Legal pages */}
+        <Route path="/cgu" element={<CGU />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/security" element={<SecurityPage />} />
+        <Route path="/mentions" element={<LegalMentions />} />
       </Routes>
-
-      {/* Footer de démonstration */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-3">
-          <div className="text-xs text-gray-600">
-            <p className="font-semibold">ContractEasy MVP</p>
-            <p>React Router + Tailwind</p>
-            <p className="text-gray-500">Prêt pour production</p>
-          </div>
-        </div>
-      </div>
+      
+      {/* Cookie banner */}
+      <CookieBanner />
     </div>
   );
 };
