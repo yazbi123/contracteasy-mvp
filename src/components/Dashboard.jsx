@@ -1,21 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { getContracts, saveContract } from '../services/firestoreService';
+import { notificationService } from '../services/notificationService';
+import { analyticsService } from '../services/analyticsService';
 
 const Dashboard = () => {
   const [filter, setFilter] = useState('all');
   const [showNewContract, setShowNewContract] = useState(false);
+  const [contracts, setContracts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newContract, setNewContract] = useState({ name: '', client: '', content: '' });
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
 
-  // Données de démonstration
-  const contracts = [
-    { id: 1, name: 'Maintenance IT', client: 'TechCorp', status: 'expired', dueDate: '15/01/2024' },
-    { id: 2, name: 'Prestation marketing', client: 'StartupXYZ', status: 'pending', dueDate: '28/02/2024' },
-    { id: 3, name: 'Consulting RH', client: 'HR Solutions', status: 'signed', dueDate: '15/06/2024' },
-    { id: 4, name: 'Formation équipe', client: 'EduCorp', status: 'renewal', dueDate: '10/03/2024' }
-  ];
+  // Charger les contrats et notifications depuis Firestore
+  useEffect(() => {
+    const loadData = async () => {
+      if (user) {
+        setLoading(true);
+        
+        // Charger les contrats
+        const contractsResult = await getContracts(user.uid);
+        if (contractsResult.success) {
+          setContracts(contractsResult.contracts);
+          
+          // Vérifier les contrats qui expirent bientôt
+          await notificationService.checkExpiringContracts(contractsResult.contracts, user.uid);
+          await notificationService.checkPendingSignatures(contractsResult.contracts, user.uid);
+        }
+        
+        // Charger les notifications
+        const notificationsResult = await notificationService.getUserNotifications(user.uid);
+        if (notificationsResult.success) {
+          setNotifications(notificationsResult.notifications);
+          setUnreadCount(notificationService.getUnreadCount());
+        }
+        
+        // Tracker la visite du dashboard
+        analyticsService.trackPageView('dashboard', user.uid);
+        
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [user]);
 
-  const notifications = [
-    { id: 1, type: 'urgent', title: 'Contrat urgent', message: 'Contrat "Maintenance IT" expire dans 3 jours', time: 'Il y a 2 heures' },
-    { id: 2, type: 'warning', title: 'Signature en attente', message: 'Contrat "Prestation marketing" en attente de signature', time: 'Il y a 1 jour' }
-  ];
+  const handleSaveContract = async () => {
+    if (user && newContract.name && newContract.client) {
+      const contractData = {
+        name: newContract.name,
+        client: newContract.client,
+        content: newContract.content,
+        status: 'pending',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      };
+      
+      const result = await saveContract(contractData, user.uid);
+      if (result.success) {
+        setContracts([{ id: result.id, ...contractData }, ...contracts]);
+        setNewContract({ name: '', client: '', content: '' });
+        setShowNewContract(false);
+        
+        // Notifier la création du contrat
+        await notificationService.notifyContractCreated(user.uid, contractData.name);
+        
+        // Tracker l'événement
+        analyticsService.trackContractCreated(user.uid, contractData.name, 'new');
+      }
+    }
+  };
+
+  // Notifications sont maintenant chargées depuis Firebase via notificationService
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -166,6 +223,62 @@ const Dashboard = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {notifications.length > 0 ? (
+                  notifications.slice(0, 5).map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-3 rounded-lg border-l-4 ${
+                        notification.priority === 'high' 
+                          ? 'bg-red-50 border-red-400' 
+                          : notification.priority === 'medium'
+                          ? 'bg-yellow-50 border-yellow-400'
+                          : 'bg-blue-50 border-blue-400'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-2">
+                        <div className="flex-shrink-0">
+                          {notification.priority === 'high' && <span className="text-red-500">🚨</span>}
+                          {notification.priority === 'medium' && <span className="text-yellow-500">⚠️</span>}
+                          {notification.priority === 'normal' && <span className="text-blue-500">ℹ️</span>}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-gray-900">{notification.title}</h4>
+                          <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(notification.createdAt).toLocaleDateString('fr-FR')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500 text-sm">Aucune notification</p>
+                  </div>
+                )}
+              </div>
+              
+              {notifications.length > 5 && (
+                <button className="w-full mt-3 text-sm text-blue-600 hover:text-blue-800">
+                  Voir toutes les notifications
+                </button>
+              )}
             </div>
           </div>
 

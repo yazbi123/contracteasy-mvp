@@ -28,6 +28,14 @@ const Navigation = () => {
             🔐 Connexion
           </Link>
           <Link
+            to="/signup"
+            className={`block w-full text-left px-2 py-1 text-xs rounded ${
+              isActive('/signup') ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            📝 Inscription
+          </Link>
+          <Link
             to="/dashboard"
             className={`block w-full text-left px-2 py-1 text-xs rounded ${
               isActive('/dashboard') ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
@@ -94,6 +102,34 @@ const Login = () => (
         />
         <button className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-700 transition">
           Se connecter
+        </button>
+      </form>
+    </div>
+  </div>
+);
+
+const Signup = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Inscription</h2>
+      <form className="space-y-4">
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          type="password"
+          placeholder="Mot de passe"
+          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          type="password"
+          placeholder="Confirmer le mot de passe"
+          className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button className="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-700 transition">
+          S'inscrire
         </button>
       </form>
     </div>
@@ -196,6 +232,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/editor" element={<Editor />} />
         <Route path="/signatures" element={<Signatures />} />

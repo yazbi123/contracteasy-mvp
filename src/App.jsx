@@ -7,11 +7,14 @@ import ContractEditor from './components/ContractEditor';
 import AIContractEditor from './components/AIContractEditor';
 import SignatureManagement from './components/SignatureManagement';
 import { MobileDashboard, MobileContractEditor } from './components/MobileComponents';
+import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './hooks/useAuth';
 
 // Composant de navigation
 const Navigation = () => {
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { user, logout } = useAuth();
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -28,6 +31,11 @@ const Navigation = () => {
     <div className="fixed top-4 left-4 z-50">
       <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
         <h3 className="text-sm font-semibold text-gray-900 mb-2">Démo ContractEasy</h3>
+        {user && (
+          <div className="text-xs text-gray-600 mb-2">
+            Connecté: {user.email}
+          </div>
+        )}
         <div className="space-y-1">
           <Link
             to="/"
@@ -86,6 +94,16 @@ const Navigation = () => {
             ✍️ Signatures
           </Link>
         </div>
+        {user && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <button
+              onClick={logout}
+              className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+            >
+              🚪 Déconnexion
+            </button>
+          </div>
+        )}
         <div className="mt-2 pt-2 border-t border-gray-200">
           <p className="text-xs text-gray-500">
             {isMobile ? '📱 Mobile' : '🖥️ Desktop'}
@@ -117,10 +135,26 @@ const AppContent = () => {
         <Route path="/" element={<Homepage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/signup" element={<SignupForm />} />
-        <Route path="/dashboard" element={isMobile ? <MobileDashboard /> : <Dashboard />} />
-        <Route path="/editor" element={isMobile ? <MobileContractEditor /> : <ContractEditor />} />
-        <Route path="/ai-editor" element={<AIContractEditor />} />
-        <Route path="/signatures" element={<SignatureManagement />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            {isMobile ? <MobileDashboard /> : <Dashboard />}
+          </ProtectedRoute>
+        } />
+        <Route path="/editor" element={
+          <ProtectedRoute>
+            {isMobile ? <MobileContractEditor /> : <ContractEditor />}
+          </ProtectedRoute>
+        } />
+        <Route path="/ai-editor" element={
+          <ProtectedRoute>
+            <AIContractEditor />
+          </ProtectedRoute>
+        } />
+        <Route path="/signatures" element={
+          <ProtectedRoute>
+            <SignatureManagement />
+          </ProtectedRoute>
+        } />
       </Routes>
 
       {/* Footer de démonstration */}

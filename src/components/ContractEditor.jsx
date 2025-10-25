@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import { aiService } from '../services/aiService';
+import { exportService } from '../services/exportService';
+import { analyticsService } from '../services/analyticsService';
+import { useAuth } from '../hooks/useAuth';
 
 const ContractEditor = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -9,6 +13,11 @@ const ContractEditor = () => {
     description: ''
   });
   const [showAISuggestion, setShowAISuggestion] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [contractContent, setContractContent] = useState('');
+  const [aiProvider, setAiProvider] = useState('openai');
+  const { user } = useAuth();
 
   const templates = [
     { id: 1, name: 'NDA', description: 'Accord de confidentialité', icon: '🔒' },
@@ -26,6 +35,89 @@ const ContractEditor = () => {
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
     setShowAISuggestion(true);
+    analyticsService.trackFeatureUsage('template_selection', user?.uid, { template: template.name });
+  };
+
+  // Générer une clause avec l'IA
+  const generateAIClause = async (clauseType) => {
+    setAiLoading(true);
+    try {
+      const context = {
+        service: formData.description,
+        client: formData.clientName,
+        amount: formData.amount,
+        duration: formData.duration
+      };
+
+      const suggestion = await aiService.generateClause(context, clauseType, aiProvider);
+      setAiSuggestion(suggestion);
+      
+      analyticsService.trackAIGeneration(user?.uid, clauseType, true);
+    } catch (error) {
+      console.error('Erreur génération IA:', error);
+      analyticsService.trackAIGeneration(user?.uid, clauseType, false);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Analyser le contrat avec l'IA
+  const analyzeContract = async () => {
+    if (!contractContent.trim()) return;
+    
+    setAiLoading(true);
+    try {
+      const analysis = await aiService.analyzeContract(contractContent, aiProvider);
+      setAiSuggestion(analysis);
+      analyticsService.trackFeatureUsage('contract_analysis', user?.uid);
+    } catch (error) {
+      console.error('Erreur analyse:', error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Vérifier la conformité RGPD
+  const checkGDPRCompliance = async () => {
+    if (!contractContent.trim()) return;
+    
+    setAiLoading(true);
+    try {
+      const compliance = await aiService.checkGDPRCompliance(contractContent, aiProvider);
+      setAiSuggestion(compliance);
+      analyticsService.trackFeatureUsage('gdpr_check', user?.uid);
+    } catch (error) {
+      console.error('Erreur vérification RGPD:', error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Exporter en PDF
+  const exportToPDF = async () => {
+    try {
+      const contractData = {
+        name: selectedTemplate?.name || 'Contrat',
+        client: formData.clientName,
+        content: contractContent,
+        status: 'draft',
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      };
+
+      const result = await exportService.exportContractToPDF(contractData, {
+        filename: `contrat-${contractData.name}-${Date.now()}.pdf`
+      });
+
+      if (result.success) {
+        analyticsService.trackPDFExport(user?.uid, 'single_contract', 1);
+        alert('PDF exporté avec succès !');
+      } else {
+        alert('Erreur lors de l\'export PDF');
+      }
+    } catch (error) {
+      console.error('Erreur export PDF:', error);
+      analyticsService.trackError('pdf_export_error', error.message, user?.uid);
+    }
   };
 
   return (
@@ -36,6 +128,12 @@ const ContractEditor = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">Éditeur de contrats</h1>
             <div className="flex space-x-3">
+              <button 
+                onClick={exportToPDF}
+                className="px-4 py-2 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50"
+              >
+                📄 Exporter PDF
+              </button>
               <button className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
                 Annuler
               </button>
@@ -145,26 +243,116 @@ const ContractEditor = () => {
                   />
                 </div>
 
-                {/* AI Suggestion */}
-                {showAISuggestion && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs">🤖</span>
+                {/* Section IA Avancée */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    🤖 Assistant IA
+                    {aiLoading && <span className="ml-2 animate-spin">⏳</span>}
+                  </h3>
+                  
+                  {/* Sélecteur de fournisseur IA */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fournisseur IA
+                    </label>
+                    <select
+                      value={aiProvider}
+                      onChange={(e) => setAiProvider(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="openai">OpenAI GPT</option>
+                      <option value="xai">xAI Grok</option>
+                    </select>
+                  </div>
+
+                  {/* Boutons d'action IA */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <button
+                      onClick={() => generateAIClause('payment')}
+                      disabled={aiLoading}
+                      className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 text-sm"
+                    >
+                      💰 Clause Paiement
+                    </button>
+                    <button
+                      onClick={() => generateAIClause('confidentiality')}
+                      disabled={aiLoading}
+                      className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 text-sm"
+                    >
+                      🔒 Clause Confidentialité
+                    </button>
+                    <button
+                      onClick={() => generateAIClause('termination')}
+                      disabled={aiLoading}
+                      className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 text-sm"
+                    >
+                      🚪 Clause Résiliation
+                    </button>
+                    <button
+                      onClick={() => generateAIClause('liability')}
+                      disabled={aiLoading}
+                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 text-sm"
+                    >
+                      ⚖️ Clause Responsabilité
+                    </button>
+                  </div>
+
+                  {/* Actions avancées */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <button
+                      onClick={analyzeContract}
+                      disabled={aiLoading || !contractContent.trim()}
+                      className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 text-sm"
+                    >
+                      🔍 Analyser Contrat
+                    </button>
+                    <button
+                      onClick={checkGDPRCompliance}
+                      disabled={aiLoading || !contractContent.trim()}
+                      className="px-3 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 text-sm"
+                    >
+                      🛡️ Vérifier RGPD
+                    </button>
+                  </div>
+
+                  {/* Affichage des suggestions IA */}
+                  {aiSuggestion && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Suggestion IA :</h4>
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {aiSuggestion}
                       </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-blue-900">Suggestion IA</h4>
-                        <p className="text-sm text-blue-700 mt-1">
-                          Ajouter une clause de paiement ? Je peux générer automatiquement les termes de paiement.
-                        </p>
-                        <button className="text-sm text-blue-600 hover:text-blue-800 font-medium mt-2">
-                          Appliquer la suggestion
+                      <div className="mt-3 flex space-x-2">
+                        <button
+                          onClick={() => setContractContent(contractContent + '\n\n' + aiSuggestion)}
+                          className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                        >
+                          Ajouter au contrat
+                        </button>
+                        <button
+                          onClick={() => setAiSuggestion('')}
+                          className="px-3 py-1 bg-gray-500 text-white rounded text-xs hover:bg-gray-600"
+                        >
+                          Fermer
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </form>
+            </div>
+          </div>
+
+          {/* Éditeur de contenu */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Contenu du contrat</h2>
+              <textarea
+                value={contractContent}
+                onChange={(e) => setContractContent(e.target.value)}
+                className="w-full h-96 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                placeholder="Rédigez votre contrat ici... Vous pouvez utiliser l'IA pour générer des clauses automatiquement."
+              />
             </div>
           </div>
 

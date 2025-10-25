@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 // Composant de connexion
 export const LoginForm = () => {
@@ -6,10 +8,13 @@ export const LoginForm = () => {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrors({});
     
     // Validation
     const newErrors = {};
@@ -22,11 +27,16 @@ export const LoginForm = () => {
       return;
     }
 
-    // Simulation API call
-    setTimeout(() => {
-      setLoading(false);
-      alert('Connexion réussie !');
-    }, 2000);
+    // Authentification Firebase
+    const result = await login(email, password);
+    
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setErrors({ general: result.error });
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -119,7 +129,7 @@ export const LoginForm = () => {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Pas encore de compte ?{' '}
-            <a href="#" className="text-blue-500 hover:text-blue-700 font-medium">
+            <a href="/signup" className="text-blue-500 hover:text-blue-700 font-medium">
               S'inscrire
             </a>
           </p>
@@ -137,12 +147,15 @@ export const SignupForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrors({});
     
     // Validation
     const newErrors = {};
@@ -157,11 +170,16 @@ export const SignupForm = () => {
       return;
     }
 
-    // Simulation API call
-    setTimeout(() => {
-      setLoading(false);
-      alert('Compte créé avec succès !');
-    }, 2000);
+    // Inscription Firebase
+    const result = await register(email, password);
+    
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setErrors({ general: result.error });
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -264,7 +282,7 @@ export const SignupForm = () => {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Déjà un compte ?{' '}
-            <a href="#" className="text-blue-500 hover:text-blue-700 font-medium">
+            <a href="/login" className="text-blue-500 hover:text-blue-700 font-medium">
               Se connecter
             </a>
           </p>

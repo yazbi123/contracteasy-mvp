@@ -1,42 +1,50 @@
-// Service IA pour les suggestions de clauses
+// Service IA avancé pour ContractEasy
+import axios from 'axios';
+
 export class AIService {
   constructor() {
-    this.apiKey = process.env.REACT_APP_OPENAI_API_KEY;
+    this.apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    this.xaiKey = import.meta.env.VITE_XAI_API_KEY;
     this.baseURL = 'https://api.openai.com/v1/chat/completions';
+    this.xaiURL = 'https://api.x.ai/v1/chat/completions';
   }
 
-  // Générer une clause de contrat
-  async generateClause(context, type = 'general') {
+  // Générer une clause de contrat avec support multi-API
+  async generateClause(context, type = 'general', provider = 'openai') {
     try {
       const prompt = this.getPromptForType(type, context);
+      const apiKey = provider === 'xai' ? this.xaiKey : this.apiKey;
+      const baseURL = provider === 'xai' ? this.xaiURL : this.baseURL;
       
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
+      if (!apiKey) {
+        return this.getFallbackClause(type);
+      }
+
+      const response = await axios.post(baseURL, {
+        model: provider === 'xai' ? 'grok-beta' : 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert juridique français spécialisé dans la rédaction de contrats. Génère des clauses professionnelles, claires et conformes au droit français.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      }, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'Tu es un expert en droit des contrats. Génère des clauses professionnelles et juridiquement valides.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 500,
-          temperature: 0.7
-        })
+        timeout: 30000
       });
 
-      const data = await response.json();
-      return data.choices[0].message.content;
+      return response.data.choices[0].message.content;
     } catch (error) {
-      console.error('Erreur IA:', error);
+      console.error(`Erreur IA ${provider}:`, error);
       return this.getFallbackClause(type);
     }
   }
@@ -68,37 +76,149 @@ export class AIService {
   }
 
   // Analyser un contrat existant
-  async analyzeContract(contractText) {
+  async analyzeContract(contractText, provider = 'openai') {
     try {
-      const response = await fetch(this.baseURL, {
-        method: 'POST',
+      const apiKey = provider === 'xai' ? this.xaiKey : this.apiKey;
+      const baseURL = provider === 'xai' ? this.xaiURL : this.baseURL;
+      
+      if (!apiKey) {
+        return 'Analyse non disponible. Clé API manquante.';
+      }
+
+      const response = await axios.post(baseURL, {
+        model: provider === 'xai' ? 'grok-beta' : 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert juridique français. Analyse les contrats et identifie les points clés, risques potentiels et suggestions d\'amélioration.'
+          },
+          {
+            role: 'user',
+            content: `Analyse ce contrat et fournis un rapport structuré :\n\n${contractText}`
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.5
+      }, {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'Tu es un expert en droit des contrats. Analyse les contrats et suggère des améliorations.'
-            },
-            {
-              role: 'user',
-              content: `Analyse ce contrat et suggère des améliorations :\n\n${contractText}`
-            }
-          ],
-          max_tokens: 300,
-          temperature: 0.5
-        })
+        timeout: 30000
       });
 
-      const data = await response.json();
-      return data.choices[0].message.content;
+      return response.data.choices[0].message.content;
     } catch (error) {
-      console.error('Erreur analyse IA:', error);
-      return 'Analyse non disponible. Vérifiez votre connexion.';
+      console.error(`Erreur analyse IA ${provider}:`, error);
+      return 'Analyse non disponible. Vérifiez votre connexion et votre clé API.';
     }
+  }
+
+  // Générer un contrat complet
+  async generateFullContract(contractType, details, provider = 'openai') {
+    try {
+      const apiKey = provider === 'xai' ? this.xaiKey : this.apiKey;
+      const baseURL = provider === 'xai' ? this.xaiURL : this.baseURL;
+      
+      if (!apiKey) {
+        return this.getFallbackContract(contractType);
+      }
+
+      const prompt = `Génère un contrat complet de ${contractType} avec ces détails: ${JSON.stringify(details)}`;
+      
+      const response = await axios.post(baseURL, {
+        model: provider === 'xai' ? 'grok-beta' : 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert juridique français. Génère des contrats complets et professionnels avec préambule, clauses principales, conditions générales et signatures.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        timeout: 30000
+      });
+
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      console.error(`Erreur génération contrat ${provider}:`, error);
+      return this.getFallbackContract(contractType);
+    }
+  }
+
+  // Vérification de conformité RGPD
+  async checkGDPRCompliance(contractText, provider = 'openai') {
+    try {
+      const apiKey = provider === 'xai' ? this.xaiKey : this.apiKey;
+      const baseURL = provider === 'xai' ? this.xaiURL : this.baseURL;
+      
+      if (!apiKey) {
+        return 'Vérification RGPD non disponible. Clé API manquante.';
+      }
+
+      const response = await axios.post(baseURL, {
+        model: provider === 'xai' ? 'grok-beta' : 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'Tu es un expert RGPD français. Vérifie la conformité de ce contrat au RGPD et identifie les mentions obligatoires, consentements, droits des personnes et durées de conservation.'
+          },
+          {
+            role: 'user',
+            content: `Vérifie la conformité RGPD de ce contrat :\n\n${contractText}`
+          }
+        ],
+        max_tokens: 400,
+        temperature: 0.3
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        timeout: 30000
+      });
+
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      console.error(`Erreur vérification RGPD ${provider}:`, error);
+      return 'Vérification RGPD non disponible. Vérifiez votre connexion.';
+    }
+  }
+
+  // Contrat de fallback
+  getFallbackContract(type) {
+    return `CONTRAT DE ${type.toUpperCase()}
+
+Entre les soussignés :
+- [Nom du client]
+- [Nom de l'entreprise]
+
+Il est convenu ce qui suit :
+
+Article 1 - Objet
+Le présent contrat a pour objet [description du service].
+
+Article 2 - Modalités
+[Modalités à définir]
+
+Article 3 - Durée
+Le présent contrat prend effet le [date] et se termine le [date].
+
+Article 4 - Conditions financières
+[Conditions à définir]
+
+En foi de quoi, les parties ont signé le présent contrat.
+
+[Signatures]`;
   }
 }
 
